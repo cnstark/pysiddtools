@@ -8,7 +8,8 @@ URLS_FILE_PATH = os.path.join(CURRENT_DIR, "SIDD_URLs_Mirror_2.txt")
 
 def format_dataset(base_dir):
     data_dir_list = os.listdir(base_dir)
-    for data_dir in data_dir_list:
+    for data_dir in filter(lambda d: d.startswith("0"), data_dir_list):
+        scene_instance_id = data_dir.split("_")[0]
         data_dir_full = os.path.join(base_dir, data_dir)
         file_list = os.listdir(data_dir_full)
         if len(file_list) == 1:
@@ -18,6 +19,14 @@ def format_dataset(base_dir):
             os.system(cmd)
             cmd = "rm -r " + os.path.join(data_dir_full, file_list[0])
             os.system(cmd)
+        file_list = os.listdir(data_dir_full)
+        for file in file_list:
+            file_scene_instance_id = file.split("_")[0]
+            if file_scene_instance_id != scene_instance_id:
+                print(scene_instance_id, file)
+                cmd = "mv " + os.path.join(data_dir_full, file) + \
+                    " " + os.path.join(data_dir_full, scene_instance_id + "_" + file)
+                os.system(cmd)
 
 
 def wget(file_url, file_name, save_dir=None):
