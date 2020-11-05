@@ -41,6 +41,26 @@ def read_rgb(path: str) -> np.ndarray:
     return cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
 
 
+def get_raw_channel(raw: np.ndarray, index: int) -> np.ndarray:
+    assert 0 <= index < 4, "Index must be [0, 4)"
+    h_start = index // 2
+    w_start = index % 2
+
+    if raw.ndim == 2:
+        return raw[h_start::2, index % 2::2]
+    elif raw.ndim == 3:
+        return raw[:, h_start::2, index % 2::2]
+    else:
+        raise TypeError("Raw has too many dims")
+
+
+def split_raw_channels(raw: np.ndarray) -> np.ndarray:
+    return np.concatenate(
+        [np.expand_dims(get_raw_channel(raw, i), raw.ndim - 2) for i in range(4)],
+        axis=raw.ndim - 2
+    )
+
+
 class SIDDSceneInstance:
     def __init__(self, base_dir: str, scene_instance_name: str):
         self.scene_instance_name = scene_instance_name
@@ -100,27 +120,34 @@ class SIDDSceneInstance:
             and (cct is None or self.cct in cct) \
             and (luminance is None or self.luminance in luminance)
 
-    def noisy_raw(self, index: int, pattern: str=None, mode: str="crop"):
+    def _get_raw(self, path: str, pattern: str=None, unify_mode: str="crop", \
+            split_channel: bool=False) -> np.ndarray:
+        assert self.visible, "This scene instance is held for benchmark"
+        raw = read_raw(path)
+        if pattern is not None and pattern != self.bayer:
+            raw = bayer_unify(raw, self.bayer, pattern, unify_mode)
+        if split_channel:
+            return split_raw_channels(raw)
+        else:
+            return raw
+
+    def noisy_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
+            split_channel: bool=False) -> np.ndarray:
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._noisy_raw_dir,
             self.scene_instance_id + "_NOISY_RAW_" + str(index + 1).zfill(3) + ".MAT"
         )
-        raw = read_raw(path)
-        if pattern is not None and pattern != self.bayer:
-            raw = bayer_unify(raw, self.bayer, pattern, mode)
-        return raw
+        return self._get_raw(path, pattern, unify_mode, split_channel)
 
-    def gt_raw(self, index: int, pattern: str=None, mode: str="crop"):
+    def gt_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
+            split_channel: bool=False) -> np.ndarray:
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._gt_raw_dir,
             self.scene_instance_id + "_GT_RAW_" + str(index + 1).zfill(3) + ".MAT"
         )
-        raw = read_raw(path)
-        if pattern is not None and pattern != self.bayer:
-            raw = bayer_unify(raw, self.bayer, pattern, mode)
-        return raw
+        return self._get_raw(path, pattern, unify_mode, split_channel)
 
     def noisy_rgb(self, index: int):
         assert self.visible, "This scene instance is held for benchmark"
