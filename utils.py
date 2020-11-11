@@ -7,6 +7,9 @@ URLS_FILE_PATH = os.path.join(CURRENT_DIR, "SIDD_URLs_Mirror_2.txt")
 
 
 def format_dataset(base_dir):
+    """
+    格式化SIDD数据集
+    """
     data_dir_list = os.listdir(base_dir)
     for data_dir in filter(lambda d: d.startswith("0"), data_dir_list):
         scene_instance_id = data_dir.split("_")[0]

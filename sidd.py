@@ -6,6 +6,7 @@ import h5py
 from scipy.io import loadmat
 import cv2
 
+from .raw_utils import get_raw_channel, split_raw_channels
 from .bayer_unify_aug import bayer_unify
 
 
@@ -23,12 +24,20 @@ SCENE_INSTANCE_PATH = os.path.join(CURRENT_DIR, "scene_instance.txt")
 
 
 def get_scene_instance(path: str) -> List[str]:
+    """
+    读取scene instance文件
+    :param path: scene instance file path
+    """
     with open(path, "r") as f:
         scene_instance_list = f.read().splitlines()
     return scene_instance_list
 
 
 def read_raw(path: str) -> np.ndarray:
+    """
+    读取raw文件
+    :param path: raw path
+    """
     assert path.split(".")[-1] in ["MAT", "mat"], \
         "Please give correct raw path"
     data = h5py.File(path)
@@ -36,33 +45,23 @@ def read_raw(path: str) -> np.ndarray:
 
 
 def read_rgb(path: str) -> np.ndarray:
+    """
+    读取rgb图片，后缀png
+    通道: RGB
+    :param path: img path
+    """
     assert path.split(".")[-1] in ["PNG", "png"], \
         "Please give correct img path"
     return cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
 
 
-def get_raw_channel(raw: np.ndarray, index: int) -> np.ndarray:
-    assert 0 <= index < 4, "Index must be [0, 4)"
-    h_start = index // 2
-    w_start = index % 2
-
-    if raw.ndim == 2:
-        return raw[h_start::2, index % 2::2]
-    elif raw.ndim == 3:
-        return raw[:, h_start::2, index % 2::2]
-    else:
-        raise TypeError("Raw has too many dims")
-
-
-def split_raw_channels(raw: np.ndarray) -> np.ndarray:
-    return np.concatenate(
-        [np.expand_dims(get_raw_channel(raw, i), raw.ndim - 2) for i in range(4)],
-        axis=raw.ndim - 2
-    )
-
-
 class SIDDSceneInstance:
     def __init__(self, base_dir: str, scene_instance_name: str):
+        """
+
+        :param base_dir: SIDD Full数据集根目录
+        :param scene_instance_name: scene instance name
+        """
         self.scene_instance_name = scene_instance_name
         values = self.scene_instance_name.split("_")
         self.scene_instance_id = values[0]
@@ -97,7 +96,16 @@ class SIDDSceneInstance:
 
     def match(self, visible: bool=None, scene_id: str or List[str]=None, \
             smartphone: str or List[str]=None, iso: int or List[int]=None, \
-            cct: int or List[int]=None, luminance: str or List[str]=None):
+            cct: int or List[int]=None, luminance: str or List[str]=None) -> bool:
+        """
+        匹配scene instance特征，返回是否匹配
+        :param visible: 是否可见（部分scene instance隐藏用于benchmark）
+        :param scene_id: scene id, (001, 002, ..., 010)
+        :param smartphone: smartphone code, (GP, IP, S6, N6, G4)
+        :param iso: ISO
+        :param cct: cct, (3200, 4400, 5500)
+        :param luminance: luminance, (L, N, H)
+        """
         if type(scene_id) == str:
             scene_id = [scene_id]
 
@@ -122,6 +130,13 @@ class SIDDSceneInstance:
 
     def _get_raw(self, path: str, pattern: str=None, unify_mode: str="crop", \
             split_channel: bool=False) -> np.ndarray:
+        """
+        获取raw数据
+        :param path: raw文件路径
+        :param pattern: bayer pattern
+        :param unify_mode: bayer unify mode, (crop, pad)
+        :param split_channel: 是否分通道
+        """
         assert self.visible, "This scene instance is held for benchmark"
         raw = read_raw(path)
         if pattern is not None and pattern != self.bayer:
@@ -133,6 +148,13 @@ class SIDDSceneInstance:
 
     def noisy_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
             split_channel: bool=False) -> np.ndarray:
+        """
+        获取noisy raw
+        :param index: index
+        :param pattern: bayer pattern
+        :param unify_mode: bayer unify mode, (crop, pad)
+        :param split_channel: 是否分通道
+        """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._noisy_raw_dir,
@@ -142,6 +164,13 @@ class SIDDSceneInstance:
 
     def gt_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
             split_channel: bool=False) -> np.ndarray:
+        """
+        获取ground truth raw
+        :param index: index
+        :param pattern: bayer pattern
+        :param unify_mode: bayer unify mode, (crop, pad)
+        :param split_channel: 是否分通道
+        """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._gt_raw_dir,
@@ -150,6 +179,10 @@ class SIDDSceneInstance:
         return self._get_raw(path, pattern, unify_mode, split_channel)
 
     def noisy_rgb(self, index: int):
+        """
+        获取noisy rgb
+        :param index: index
+        """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._noisy_rgb_dir,
@@ -158,6 +191,10 @@ class SIDDSceneInstance:
         return read_rgb(path)
 
     def gt_rgb(self, index: int):
+        """
+        获取ground truth rgb
+        :param index: index
+        """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._gt_rgb_dir,
@@ -179,6 +216,11 @@ class SIDDSceneInstance:
 
 class SIDD(list):
     def __init__(self, base_dir: str, copy_from: list=None):
+        """
+
+        :param base_dir: SIDD Full数据集根目录
+        :param copy_from: 是否由已有SIDD对象创建（仅用于filter）
+        """
         list.__init__([])
         self.base_dir = base_dir
 
@@ -198,10 +240,23 @@ class SIDD(list):
     def filter(self, visible: bool=None, scene_id: str or List[str]=None, \
             smartphone: str or List[str]=None, iso: int or List[int]=None, \
             cct: int or List[int]=None, luminance: str or List[str]=None):
+        """
+        筛选符合条件的scene instance
+        :param visible: 是否可见（部分scene instance隐藏用于benchmark）
+        :param scene_id: scene id, (001, 002, ..., 010)
+        :param smartphone: smartphone code, (GP, IP, S6, N6, G4)
+        :param iso: ISO
+        :param cct: cct, (3200, 4400, 5500)
+        :param luminance: luminance, (L, N, H)
+        """
         return SIDD(self.base_dir, copy_from=list(filter(
             lambda scene_instance: scene_instance.match(visible, scene_id, smartphone, iso, cct, luminance),
             self
         )))
 
     def img_num(self):
+        """
+        获取总图片数
+        TODO(wangyuhao): 接口形式有待商榷
+        """
         return sum(map(len, self))
