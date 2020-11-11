@@ -44,15 +44,15 @@ def read_raw(path: str) -> np.ndarray:
     return np.array(data["x"])
 
 
-def read_rgb(path: str) -> np.ndarray:
+def read_srgb(path: str) -> np.ndarray:
     """
-    读取rgb图片，后缀png
+    读取srgb图片，后缀png
     通道: RGB
     :param path: img path
     """
     assert path.split(".")[-1] in ["PNG", "png"], \
         "Please give correct img path"
-    return cv2.cvtColor(cv2.imread(rgb_path), cv2.COLOR_BGR2RGB)
+    return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
 
 class SIDDSceneInstance:
@@ -75,8 +75,8 @@ class SIDDSceneInstance:
 
         self._noisy_raw_dir = os.path.join(base_dir, self.scene_instance_id + "_NOISY_RAW")
         self._gt_raw_dir = os.path.join(base_dir, self.scene_instance_id + "_GT_RAW")
-        self._noisy_rgb_dir = os.path.join(base_dir, self.scene_instance_id + "_NOISY_SRGB")
-        self._gt_rgb_dir = os.path.join(base_dir, self.scene_instance_id + "_GT_SRGB")
+        self._noisy_srgb_dir = os.path.join(base_dir, self.scene_instance_id + "_NOISY_SRGB")
+        self._gt_srgb_dir = os.path.join(base_dir, self.scene_instance_id + "_GT_SRGB")
         self._metadata_dir = os.path.join(base_dir, self.scene_instance_id + "_METADATA_RAW")
 
         self.visible = os.path.isdir(self._metadata_dir)
@@ -84,10 +84,10 @@ class SIDDSceneInstance:
         if self.visible:
             noisy_raw_num = len(os.listdir(self._noisy_raw_dir))
             gt_raw_num = len(os.listdir(self._gt_raw_dir))
-            noisy_rgb_num = len(os.listdir(self._noisy_rgb_dir))
-            gt_rgb_num = len(os.listdir(self._gt_rgb_dir))
+            noisy_srgb_num = len(os.listdir(self._noisy_srgb_dir))
+            gt_srgb_num = len(os.listdir(self._gt_srgb_dir))
 
-            assert noisy_raw_num == gt_raw_num == noisy_rgb_num == gt_rgb_num, \
+            assert noisy_raw_num == gt_raw_num == noisy_srgb_num == gt_srgb_num, \
                 "SIDD Dataset is not complete"
             
             self.img_num = noisy_raw_num
@@ -178,29 +178,29 @@ class SIDDSceneInstance:
         )
         return self._get_raw(path, pattern, unify_mode, split_channel)
 
-    def noisy_rgb(self, index: int):
+    def noisy_srgb(self, index: int):
         """
-        获取noisy rgb
+        获取noisy srgb
         :param index: index
         """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
-            self._noisy_rgb_dir,
+            self._noisy_srgb_dir,
             self.scene_instance_id + "_NOISY_SRGB_" + str(index + 1).zfill(3) + ".PNG"
         )
-        return read_rgb(path)
+        return read_srgb(path)
 
-    def gt_rgb(self, index: int):
+    def gt_srgb(self, index: int):
         """
-        获取ground truth rgb
+        获取ground truth srgb
         :param index: index
         """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
-            self._gt_rgb_dir,
+            self._gt_srgb_dir,
             self.scene_instance_id + "_GT_SRGB_" + str(index + 1).zfill(3) + ".PNG"
         )
-        return read_rgb(path)
+        return read_srgb(path)
 
     # TODO(wangyuhao): metadata
 
