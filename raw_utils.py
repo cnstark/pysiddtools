@@ -16,7 +16,7 @@ def get_raw_channel(src: torch.Tensor or np.ndarray, index: int):
     return src[..., index // 2::2, index % 2::2]
 
 
-def split_raw_channels(src: torch.Tensor or np.ndarray):
+def pack_raw(src: torch.Tensor or np.ndarray):
     """
     分割raw通道
     输入: (..., h, w)
@@ -35,7 +35,7 @@ def split_raw_channels(src: torch.Tensor or np.ndarray):
         )
 
 
-def cat_raw_channels(src: torch.Tensor or np.ndarray):
+def unpack_raw(src: torch.Tensor or np.ndarray):
     """
     合并raw通道
     输入: (..., 4, h / 2, w / 2)
@@ -52,9 +52,9 @@ def cat_raw_channels(src: torch.Tensor or np.ndarray):
     raw_shape.append(w * 2)
 
     if isinstance(src, torch.Tensor):
-        raw = torch.empty(raw_shape)
+        raw = torch.empty(raw_shape, dtype = src.dtype, device = src.device)
     else:
-        raw = np.zeros(raw_shape)
+        raw = np.zeros(raw_shape, dtype = src.dtype)
     for i in range(4):
         raw[..., i // 2::2, i % 2::2] = src[..., i, :, :]
     return raw
@@ -62,17 +62,16 @@ def cat_raw_channels(src: torch.Tensor or np.ndarray):
 
 def raw_align_up(src: torch.Tensor or np.ndarray, align_up_to: int):
     """
-    将raw图像的h和w对齐为边长是align_up_to的倍数正方形
+    将raw图像的h和w对齐为align_up_to的倍数
     输入: (..., h, w)
-    输出: (..., align, align)
+    输出: (..., h_align, w_align)
     :param src: input
     :param align_up_to: align up to (example 4)
     """
     assert 2 <= src.ndim <= 4
 
-    max_side = max(src.shape[-1], src.shape[-2])
-    pad_h = math.ceil(max_side / align_up_to) * align_up_to - src.shape[-2]
-    pad_w = math.ceil(max_side / align_up_to) * align_up_to - src.shape[-1]
+    pad_h = math.ceil(src.shape[-2] / align_up_to) * align_up_to - src.shape[-2]
+    pad_w = math.ceil(src.shape[-1] / align_up_to) * align_up_to - src.shape[-1]
 
     assert pad_h % 2 == 0 and pad_w % 2 == 0
 

@@ -3,10 +3,8 @@ from typing import List
 
 import numpy as np
 import h5py
-from scipy.io import loadmat
 import cv2
 
-from .raw_utils import get_raw_channel, split_raw_channels
 from .bayer_unify_aug import bayer_unify
 
 
@@ -128,55 +126,46 @@ class SIDDSceneInstance:
             and (cct is None or self.cct in cct) \
             and (luminance is None or self.luminance in luminance)
 
-    def _get_raw(self, path: str, pattern: str=None, unify_mode: str="crop", \
-            split_channel: bool=False) -> np.ndarray:
+    def _get_raw(self, path: str, pattern: str=None, unify_mode: str="crop") -> np.ndarray:
         """
         获取raw数据
         :param path: raw文件路径
         :param pattern: bayer pattern
         :param unify_mode: bayer unify mode, (crop, pad)
-        :param split_channel: 是否分通道
         """
         assert self.visible, "This scene instance is held for benchmark"
         raw = read_raw(path)
         if pattern is not None and pattern != self.bayer:
             raw = bayer_unify(raw, self.bayer, pattern, unify_mode)
-        if split_channel:
-            return split_raw_channels(raw)
-        else:
-            return raw
+        return raw
 
-    def noisy_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
-            split_channel: bool=False) -> np.ndarray:
+    def noisy_raw(self, index: int, pattern: str=None, unify_mode: str="crop") -> np.ndarray:
         """
         获取noisy raw
         :param index: index
         :param pattern: bayer pattern
         :param unify_mode: bayer unify mode, (crop, pad)
-        :param split_channel: 是否分通道
         """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._noisy_raw_dir,
             self.scene_instance_id + "_NOISY_RAW_" + str(index + 1).zfill(3) + ".MAT"
         )
-        return self._get_raw(path, pattern, unify_mode, split_channel)
+        return self._get_raw(path, pattern, unify_mode)
 
-    def gt_raw(self, index: int, pattern: str=None, unify_mode: str="crop", \
-            split_channel: bool=False) -> np.ndarray:
+    def gt_raw(self, index: int, pattern: str=None, unify_mode: str="crop") -> np.ndarray:
         """
         获取ground truth raw
         :param index: index
         :param pattern: bayer pattern
         :param unify_mode: bayer unify mode, (crop, pad)
-        :param split_channel: 是否分通道
         """
         assert self.visible, "This scene instance is held for benchmark"
         path = os.path.join(
             self._gt_raw_dir,
             self.scene_instance_id + "_GT_RAW_" + str(index + 1).zfill(3) + ".MAT"
         )
-        return self._get_raw(path, pattern, unify_mode, split_channel)
+        return self._get_raw(path, pattern, unify_mode)
 
     def noisy_srgb(self, index: int):
         """
